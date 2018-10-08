@@ -221,17 +221,77 @@ glimpse(data37_1)
 write.csv(data37_1, "data37_1.csv")
 saveRDS(data37_1, "data37_1.rds")
 
+#*************************************************************************
+#You cannot tell from the data given what census tract each subject belongs to.
+#You can get the individual level tract numbers from the US Census.
+#You can block geocode up to 10000 units at a time. This is a free service.
+#Get the census tracts from [US Census](https://www.census.gov/geo/maps-data/data/geocoder.html) (Saved as UTF8 CSV)
+tracts <- read_csv("AustinCensusTracts1.csv")
+glimpse(tracts)
 
 
+tracts <- tracts %>%
+  drop_na("Tract")
+tracts$RIN <- as.character(tracts$RIN)
+glimpse(tracts)
+tracts1 <- tracts %>% dplyr::select(RIN, Tract)
+glimpse(tracts1)
+str(tracts1)
 
+data37_2 <- data37_1
+glimpse(data37_2)
+data37_2$RIN <- as.character(data37_2$RIN)
+data37_2$dayofweek <- as.character(data37_2$dayofweek)
+data37_2$mon <- as.character(data37_2$mon)
+str(data37_2)
 
+austin1 <- data37_2 %>% 
+  left_join(tracts, by = "RIN")
+glimpse(austin1)
+austin2 <- austin1 %>% 
+  drop_na("Tract")
+glimpse(austin2)
+#***************************************************
+educ1 <- read_csv("D:/PolicingEquity/Dept_37-00027/37-00027_ACS_data/37-00027_ACS_education-attainment/Austin16_educ.csv")
+#educ1$index <- seq(1:nrow(educ1))
+glimpse(educ1)
 
+cols <- seq(0, length(educ1), 4) 
+cols <- cols[-1]
+cols <- c(2, 3, cols)
 
+#reduce columns to the totals
+educ2 <- educ1[ , cols]
+glimpse(educ2)
 
+#make row 1 the column names
+colnames(educ2) <- educ2[1, ]
+educ2 <- educ2[-1, ]
 
+#select the most relevant columns
+educ3 <- educ2[ , c(1:4,6,7,9,10,12,13,15,16,102,111,120,129,138)]
 
+#summarize the crime data by census tract
+#First select the numeric columns and the tract data
+austin3 <- austin2 %>% dplyr::select(offserv, officer_injury, subject_injury,
+                              subject_death, officer_used_weapon,
+                              officer_used_firearm, Tract)
+austin3$Tract <- as.character(austin3$Tract)
+austin4 <- austin3 %>% 
+  group_by(Tract, officer_injury, subject_injury ) %>% 
+  summarize(tot_count = n())
+austin5 <- austin4 %>% filter(officer_injury == 1)
+             
+officerInjury <- austin3 %>% 
+  count(Tract, officer_injury) %>% 
+  filter(officer_injury == 1)
+subjectInjury <- austin3 %>% 
+  count(Tract, subject_injury) %>% 
+  filter(subject_injury == 1)
+subjectDeath <- austin3 %>% 
+  count(Tract, subject_death)
 
-
+stats <- officerInjury %>% left_join(subjectInjury, by = "Tract")
 
 
 
